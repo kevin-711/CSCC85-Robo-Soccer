@@ -1,14 +1,14 @@
 /***************************************************
  CSC C85 - UTSC RoboSoccer AI core
- 
+
  This file contains the definition of the AI data
  structure which holds the state of your bot's AI.
 
  You must become familiar with this structure and
- its contents. 
+ its contents.
 
  You will need to modify this file to add headers
- for any functions you added to implemet the 
+ for any functions you added to implemet the
  soccer playing functionality of your bot.
 
  Be sure to document everything you do thoroughly.
@@ -30,13 +30,14 @@
 #define LEFT_MOTOR MOTOR_D
 #define RIGHT_MOTOR MOTOR_A
 
-#define AI_SOCCER 0 	// Play soccer!
-#define AI_PENALTY 1    // Go score some goals!
-#define AI_CHASE 2 	    // Kick the ball around and chase it!
+#define AI_SOCCER 0	 // Play soccer!
+#define AI_PENALTY 1 // Go score some goals!
+#define AI_CHASE 2	 // Kick the ball around and chase it!
 
-#define NOISE_VAR 5.0                   // Minimum amount of displacement considered NOT noise (in pixels).
+#define NOISE_VAR 5.0 // Minimum amount of displacement considered NOT noise (in pixels).
 
-struct AI_data{
+struct AI_data
+{
 	// This data structure is used to hold all data relevant to the state of the AI.
 	// This includes, of course, the current state, as well as the status of
 	// our own bot, the opponent (if present), and the ball (if present).
@@ -47,16 +48,16 @@ struct AI_data{
 	// MIND THE NOISE.
 
 	// Robot's playfield side id (w.r.t. the viepoint of the camera).
-	int side;		// side=0 implies the robot's own side is the left side
-                    // side=1 implies the robot's own side is the right side
-                    // This is set based on the robot's initial position
-                    // on the field
-    int botCol;		// Own bot's colour. 0 - green, 1 - red
+	int side;	// side=0 implies the robot's own side is the left side
+				// side=1 implies the robot's own side is the right side
+				// This is set based on the robot's initial position
+				// on the field
+	int botCol; // Own bot's colour. 0 - green, 1 - red
 
-	int state;		// Current AI state
+	int state; // Current AI state
 
-	// Object ID status for self, opponent, and ball. Just boolean 
-        // values indicating whether blobs have been found for each of these
+	// Object ID status for self, opponent, and ball. Just boolean
+	// values indicating whether blobs have been found for each of these
 	// entities.
 	int selfID;
 	int oppID;
@@ -64,35 +65,36 @@ struct AI_data{
 
 	// Blob track data. Ball likely needs to be detected at each frame
 	// separately. So we keep old location to estimate v
-	struct blob *ball;		       // Current ball blob *NULL* if ball is not visible/found
-	double old_bcx, old_bcy;	   // Previous ball cx,cy
-	double bvx,bvy;			       // Ball velocity vector
-	double bmx,bmy;			       // Ball motion vector
-	double bdx,bdy;                // Ball heading direction (from blob shape)
+	struct blob *ball;		 // Current ball blob *NULL* if ball is not visible/found
+	double old_bcx, old_bcy; // Previous ball cx,cy
+	double bvx, bvy;		 // Ball velocity vector
+	double bmx, bmy;		 // Ball motion vector
+	double bdx, bdy;		 // Ball heading direction (from blob shape)
 
 	// Self track data. Done separately each frame
-    struct blob *self;		       // Current self blob *NULL* if not visible/found
-	double old_scx, old_scy;	   // Previous self (cx,cy)
-	double svx,svy;			       // Current self [vx vy]
-	double smx,smy;			       // Self motion vector
-	double sdx,sdy;                // Self heading direction (from blob shape)
+	struct blob *self;		 // Current self blob *NULL* if not visible/found
+	double old_scx, old_scy; // Previous self (cx,cy)
+	double svx, svy;		 // Current self [vx vy]
+	double smx, smy;		 // Self motion vector
+	double sdx, sdy;		 // Self heading direction (from blob shape)
 
 	// Opponent track data. Done separately each frame
-    struct blob *opp;		       // Current opponent blob *NULL* if not visible/found
-	double old_ocx, old_ocy;	   // Previous opponent (cx,cy)
-	double ovx,ovy;			       // Current opponent [vx vy]
-	double omx,omy;			       // Opponent motion vector
-	double odx,ody;                // Opponent heading direction (from blob shape)
+	struct blob *opp;		 // Current opponent blob *NULL* if not visible/found
+	double old_ocx, old_ocy; // Previous opponent (cx,cy)
+	double ovx, ovy;		 // Current opponent [vx vy]
+	double omx, omy;		 // Opponent motion vector
+	double odx, ody;		 // Opponent heading direction (from blob shape)
 };
 
-struct RoboAI {
+struct RoboAI
+{
 	// Main AI data container. It allows us to specify which function
 	// will handle the AI, and sets up a data structure to store the
 	// AI's data (see above).
-	void (* runAI)(struct RoboAI *ai, struct blob *, void *state);
-	void (* calibrate)(struct RoboAI *ai, struct blob *);
+	void (*runAI)(struct RoboAI *ai, struct blob *, void *state);
+	void (*calibrate)(struct RoboAI *ai, struct blob *);
 	struct AI_data st;
-    struct displayList *DPhead;
+	struct displayList *DPhead;
 };
 
 /**
@@ -111,7 +113,7 @@ int setupAI(int mode, int own_col, struct RoboAI *ai);
 
 /**
  * \brief Top-level AI loop.
- * 
+ *
  * Decides based on current state and blob configuration what
  * the bot should do next, and calls the appropriate behaviour
  * function.
