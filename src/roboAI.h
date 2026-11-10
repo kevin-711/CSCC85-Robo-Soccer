@@ -26,9 +26,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-// Change this to match the ports your bots motors are connected to
-#define LEFT_MOTOR MOTOR_D
-#define RIGHT_MOTOR MOTOR_A
+#define COLOUR_PORT PORT_1
+#define GYRO_PORT PORT_2
+#define TOUCH_PORT PORT_3
+#define LEFT_MOTOR MOTOR_B
+#define RIGHT_MOTOR MOTOR_C
+#define SLIDE_MOTOR MOTOR_D
 
 #define AI_SOCCER 0	 // Play soccer!
 #define AI_PENALTY 1 // Go score some goals!

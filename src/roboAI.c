@@ -29,7 +29,8 @@
 ************************************************************  ***************/
 
 #include "roboAI.h" // <--- Look at this header file!
-extern int sx;      // Get access to the image size from the imageCapture module
+#include "robotController.h"
+extern int sx; // Get access to the image size from the imageCapture module
 extern int sy;
 int laggy = 0;
 
