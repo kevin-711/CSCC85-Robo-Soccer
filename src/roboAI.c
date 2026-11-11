@@ -28,7 +28,7 @@
   EV3 Version 2.0 - Updated Jul. 2022 - F. Estrada
 ************************************************************  ***************/
 
-#include "roboAI.h" // <--- Look at this header file!
+#include "roboAI.h"
 #include "robotController.h"
 extern int sx; // Get access to the image size from the imageCapture module
 extern int sy;
@@ -577,7 +577,7 @@ int setupAI(int mode, int own_col, struct RoboAI *ai)
         ai->st.state = 0; // <-- Set AI initial state to 0
         break;
     case AI_PENALTY:
-        // 	fprintf(stderr,"Penalty mode! let's kick it!\n");
+        fprintf(stderr, "Penalty mode! let's kick it!\n");
         ai->st.state = 100; // <-- Set AI initial state to 100
         break;
     case AI_CHASE:
@@ -793,21 +793,306 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
          state transitions and with calling the appropriate function based on what
          the bot is supposed to be doing.
         *****************************************************************************/
-        //  fprintf(stderr,"Just trackin'!\n");	// bot, opponent, and ball.
-        //  track_agents(ai,blobs);		// Currently, does nothing but endlessly track
+
+        // Update info on ball, self, and opp from webcam
+        track_agents(ai, blobs);
+
+        switch (ai->st.state)
+        {
+
+            /// 0xx - Normal Soccer
+
+        case 1:
+            break;
+
+            // 1xx - Penalty Kick
+
+        case 101:
+            ai->st.state = positionRobotForShot(ai);
+            break;
+        case 102:
+            // Add a few more positioning steps in here to get it all lined up perfectly
+            ai->st.state = shootBall();
+            break;
+        case 103:
+            break;
+
+            // 2xx - Chase Ball
+
+        case 201:
+            ai->st.state = turnTowardsBall(ai);
+            break;
+        case 202:
+            ai->st.state = divertAroundObstacle(ai);
+            break;
+        case 203:
+            ai->st.state = driveTowardsBall(ai);
+            break;
+        }
     }
+
+    /**********************************************************************************
+     TO DO:
+
+     Add the rest of your game playing logic below. Create appropriate functions to
+     handle different states (be sure to name the states/functions in a meaningful
+     way), and do any processing required in the space below.
+
+     AI_main() should *NOT* do any heavy lifting. It should only call appropriate
+     functions based on the current AI state.
+
+     You will lose marks if AI_main() is cluttered with code that doesn't belong
+     there.
+    **********************************************************************************/
 }
 
-/**********************************************************************************
- TO DO:
+/*
+ * Move the robot such that we are in position for a shot on the goal
+ * Transition to 102 on success
+ */
+int positionRobotForShot(struct RoboAI *ai)
+{
+    double targetX;
+    double targetY;
+    double robotX;
+    double robotY;
 
- Add the rest of your game playing logic below. Create appropriate functions to
- handle different states (be sure to name the states/functions in a meaningful
- way), and do any processing required in the space below.
+    getShotDestination(ai, &targetX, &targetY);
 
- AI_main() should *NOT* do any heavy lifting. It should only call appropriate
- functions based on the current AI state.
+    robotX = targetX - ai->st.self->cx;
+    robotY = targetY - ai->st.self->cy;
 
- You will lose marks if AI_main() is cluttered with code that doesn't belong
- there.
-**********************************************************************************/
+    if (getDistance(robotX, robotY) < 10)
+    {
+        return 102;
+    }
+
+    turnTowardsPosition(ai, targetX, targetY);
+    drive_straight_pid(500, 1);
+
+    return 101;
+}
+
+/*
+ * Get location such that the robot is lined up
+ * Such that the ball is right between the goal and the robot
+ * And we are APPROACH_BALL_DISTANCE_THRESHOLD away from the ball
+ */
+void getShotDestination(struct RoboAI *ai, double *targetX, double *targetY)
+{
+    double goalX;
+    double goalY;
+    double directionX;
+    double directionY;
+    double distance;
+
+    // Fake var for now, this doesnt work
+    int IMAGE_WIDTH = 100; // TODO: Figure out how large the map is so we can find the goal location (idk what variable thats stored in, search for it and use it)
+
+    if (ai->st.side == 0)
+    {
+        goalX = IMAGE_WIDTH;
+    }
+    else
+    {
+        goalX = 0;
+    }
+
+    goalY = ai->st.ball->cy;
+
+    directionX = goalX - ai->st.ball->cx;
+    directionY = goalY - ai->st.ball->cy;
+
+    distance = getDistance(directionX, directionY);
+
+    if (distance == 0)
+    {
+        *targetX = ai->st.ball->cx;
+        *targetY = ai->st.ball->cy;
+        return;
+    }
+
+    directionX /= distance;
+    directionY /= distance;
+
+    *targetX = ai->st.ball->cx - APPROACH_BALL_DISTANCE_THRESHOLD * directionX;
+    *targetY = ai->st.ball->cy - APPROACH_BALL_DISTANCE_THRESHOLD * directionY;
+}
+
+int shootBall()
+{
+    shoot();
+
+    // Go to finished state
+    return 103;
+}
+
+/*
+ * Turn the robot to face towards the ball
+ * Transition to 203 on success
+ */
+int turnTowardsBall(struct RoboAI *ai)
+{
+    double ballX, ballY;
+
+    getRelativePosition(ai->st.self, ai->st.ball, &ballX, &ballY);
+
+    double destX = ai->st.self->cx + ballX;
+    double destY = ai->st.self->cy + ballY;
+
+    turnTowardsPosition(ai, destX, destY);
+
+    return 203;
+}
+
+int driveTowardsBall(struct RoboAI *ai)
+{
+    double ballX, ballY;
+    double distance;
+
+    getRelativePosition(ai->st.self, ai->st.ball, &ballX, &ballY);
+    distance = getDistance(ballX, ballY);
+
+    // Stop when close enough to the ball
+    if (distance < APPROACH_BALL_DISTANCE_THRESHOLD)
+    {
+        return;
+    }
+
+    // Check whether the path to the ball is blocked
+    // If so, transition to 202
+    if (isPathToDestObstructed(ai))
+    {
+        // Go to obstacle avoidance state
+        return 202;
+    }
+
+    // Drive straight for 500 ms
+    drive_straight_pid(500, 1);
+
+    // Recalculate the ball's direction and turn after driving (in case ball/robot position changes)
+    return 201;
+}
+
+// TODO
+int divertAroundObstacle(struct RoboAI *ai)
+{
+    // TODO: Determine whether the opponent obstructs the path to the ball.
+    // TODO: Turn left/right and drive forwards a bit
+    // TODO: Return to state 201 once the path toward the ball is clear.
+
+    // Recalculate the ball's direction and turn after driving (in case ball/robot position changes)
+    return 201;
+}
+
+/*
+ * Checks whether the opponent is blocking the path to the ball
+ * A path is blocked if the opponent is within PATH_OBSTRUCTED_THRESHOLD of the straight line path to the destination
+ * Returns 1 if blocked, otherwise 0.
+ */
+int isPathToDestObstructed(struct RoboAI *ai)
+{
+    double ballX;
+    double ballY;
+    double oppX;
+    double oppY;
+    double projection;
+    double closestX;
+    double closestY;
+    double distance;
+    double lengthSquared;
+
+    if (ai->st.opp == NULL)
+    {
+        return 0;
+    }
+
+    getRelativePosition(ai->st.self, ai->st.ball, &ballX, &ballY);
+    getRelativePosition(ai->st.self, ai->st.opp, &oppX, &oppY);
+
+    lengthSquared = ballX * ballX + ballY * ballY;
+
+    if (lengthSquared == 0)
+    {
+        return 0;
+    }
+
+    projection = (oppX * ballX + oppY * ballY) / lengthSquared;
+
+    if (projection < 0 || projection > 1)
+    {
+        return 0;
+    }
+
+    closestX = projection * ballX;
+    closestY = projection * ballY;
+
+    distance = getDistance(oppX - closestX, oppY - closestY);
+
+    return distance < PATH_OBSTRUCTED_THRESHOLD;
+}
+
+void getRelativePosition(struct blob *self, struct blob *target, double *dx, double *dy)
+{
+    *dx = target->cx - self->cx;
+    *dy = target->cy - self->cy;
+}
+
+double getDistance(double dx, double dy)
+{
+    return sqrt(dx * dx + dy * dy);
+}
+
+double normalizeAngle(double angle)
+{
+    while (angle > M_PI)
+    {
+        angle -= 2 * M_PI;
+    }
+
+    while (angle < -M_PI)
+    {
+        angle += 2 * M_PI;
+    }
+
+    return angle;
+}
+
+void turnTowardsPosition(struct RoboAI *ai, double destX, double destY)
+{
+    double targetX, targetY;
+    double headingX, headingY;
+    double headingAngle, targetAngle, turnAngle;
+    double dot;
+
+    // Get relative dist to robot
+    targetX = destX - ai->st.self->cx;
+    targetY = destY - ai->st.self->cy;
+
+    headingX = ai->st.sdx;
+    headingY = ai->st.sdy;
+
+    // icl idk how this works **********
+    if (ai->st.smx == 0 && ai->st.smy == 0)
+    {
+        return;
+    }
+
+    dot = headingX * ai->st.smx + headingY * ai->st.smy;
+
+    if (dot < 0)
+    {
+        headingX = -headingX;
+        headingY = -headingY;
+    }
+
+    // Get angle of rotation to face the destination
+    headingAngle = atan2(headingY, headingX);
+    targetAngle = atan2(targetY, targetX);
+
+    turnAngle = normalizeAngle(targetAngle - headingAngle);
+    turnAngle = turnAngle * 180 / M_PI;
+
+    // Make the full turn in this step
+    turn_by_gyro((int)turnAngle);
+}

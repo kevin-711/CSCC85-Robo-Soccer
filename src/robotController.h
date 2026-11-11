@@ -1,5 +1,5 @@
-#ifndef __localization_header
-#define __localization_header
+#ifndef __robotController_header
+#define __robotController_header
 
 #include "API/btcomm.h"
 #include <time.h>
@@ -17,9 +17,12 @@
 
 // Movement
 int drive_straight_pid(int max_ms, int direction);
-int driveStraightOnLinePID(int stopAtColour, int stayOnStreet, int direction);
 int turn_by_gyro(int target_deg);
-void turnLeft(void);
-void turnRight(void);
+void turnLeft();
+void turnRight();
+void stopRobot();
+void shoot();
+
+long elapsed_ms_since(struct timespec start);
 
 #endif

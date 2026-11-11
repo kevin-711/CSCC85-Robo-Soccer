@@ -110,7 +110,7 @@ am_roboSoccer_OBJECTS = roboSoccer.$(OBJEXT) \
 	imagecapture/gui.$(OBJEXT) imagecapture/imageProc.$(OBJEXT) \
 	imagecapture/svdDynamic.$(OBJEXT) imagecapture/utils.$(OBJEXT) \
 	imagecapture/v4l2uvc.$(OBJEXT) API/btcomm.$(OBJEXT) \
-	roboAI.$(OBJEXT)
+	roboAI.$(OBJEXT) robotController.$(OBJEXT)
 roboSoccer_OBJECTS = $(am_roboSoccer_OBJECTS)
 roboSoccer_LDADD = $(LDADD)
 AM_V_P = $(am__v_P_@AM_V@)
@@ -129,7 +129,8 @@ DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)/include
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__maybe_remake_depfiles = depfiles
 am__depfiles_remade = ./$(DEPDIR)/roboAI.Po ./$(DEPDIR)/roboSoccer.Po \
-	API/$(DEPDIR)/btcomm.Po imagecapture/$(DEPDIR)/avilib.Po \
+	./$(DEPDIR)/robotController.Po API/$(DEPDIR)/btcomm.Po \
+	imagecapture/$(DEPDIR)/avilib.Po \
 	imagecapture/$(DEPDIR)/color.Po imagecapture/$(DEPDIR)/gui.Po \
 	imagecapture/$(DEPDIR)/imageCapture.Po \
 	imagecapture/$(DEPDIR)/imageProc.Po \
@@ -278,7 +279,7 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 roboSoccer_SOURCES = roboSoccer.c imagecapture/imageCapture.c imagecapture/avilib.c imagecapture/color.c imagecapture/gui.c imagecapture/imageProc.c imagecapture/svdDynamic.c imagecapture/utils.c imagecapture/v4l2uvc.c \
-			API/btcomm.c roboAI.c
+			API/btcomm.c roboAI.c robotController.c
 
 AM_CPPFLAGS = -fpermissive
 all: all-am
@@ -401,6 +402,7 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/roboAI.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/roboSoccer.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/robotController.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@API/$(DEPDIR)/btcomm.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@imagecapture/$(DEPDIR)/avilib.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@imagecapture/$(DEPDIR)/color.Po@am__quote@ # am--include-marker
@@ -566,6 +568,7 @@ clean-am: clean-binPROGRAMS clean-generic mostlyclean-am
 distclean: distclean-am
 	-rm -f ./$(DEPDIR)/roboAI.Po
 	-rm -f ./$(DEPDIR)/roboSoccer.Po
+	-rm -f ./$(DEPDIR)/robotController.Po
 	-rm -f API/$(DEPDIR)/btcomm.Po
 	-rm -f imagecapture/$(DEPDIR)/avilib.Po
 	-rm -f imagecapture/$(DEPDIR)/color.Po
@@ -622,6 +625,7 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/roboAI.Po
 	-rm -f ./$(DEPDIR)/roboSoccer.Po
+	-rm -f ./$(DEPDIR)/robotController.Po
 	-rm -f API/$(DEPDIR)/btcomm.Po
 	-rm -f imagecapture/$(DEPDIR)/avilib.Po
 	-rm -f imagecapture/$(DEPDIR)/color.Po

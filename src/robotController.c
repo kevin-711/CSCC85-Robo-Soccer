@@ -35,14 +35,26 @@ int turn_by_gyro(int target_deg)
     return (0);
 }
 
-void turnLeft(void)
+void turnLeft()
 {
     turn_by_gyro(-90);
 }
 
-void turnRight(void)
+void turnRight()
 {
     turn_by_gyro(90);
+}
+
+//****************** Other *******************//
+
+void stopRobot()
+{
+    BT_all_stop(0);
+}
+
+void shoot()
+{
+    // TODO: hook up whatever motors to shoot the ball forwards
 }
 
 //****************** PID *******************//
@@ -109,4 +121,13 @@ int drive_straight_pid(int max_ms, int direction)
 
     BT_all_stop(1);
     return 0;
+}
+
+// Helper fn for timer
+long elapsed_ms_since(struct timespec start)
+{
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+
+    return (now.tv_sec - start.tv_sec) * 1000L + (now.tv_nsec - start.tv_nsec) / 1000000L;
 }

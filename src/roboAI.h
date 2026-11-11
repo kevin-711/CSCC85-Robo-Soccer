@@ -156,4 +156,20 @@ struct displayList *clearDP(struct displayList *head);
    playing functionality below.
 *****************************************************************************/
 
+#define PATH_OBSTRUCTED_THRESHOLD 40
+#define APPROACH_BALL_DISTANCE_THRESHOLD 40
+#define APPROACH_BALL_DISTANCE_THRESHOLD 40
+
+void turnTowardsPosition(struct RoboAI *ai, double destX, double destY);
+double normalizeAngle(double angle);
+double getDistance(double dx, double dy);
+void getRelativePosition(struct blob *self, struct blob *target, double *dx, double *dy);
+int isPathToDestObstructed(struct RoboAI *ai);
+int divertAroundObstacle(struct RoboAI *ai);
+int driveTowardsBall(struct RoboAI *ai);
+int turnTowardsBall(struct RoboAI *ai);
+int shootBall();
+void getShotDestination(struct RoboAI *ai, double *targetX, double *targetY);
+int positionRobotForShot(struct RoboAI *ai);
+
 #endif
