@@ -873,52 +873,6 @@ int positionRobotForShot(struct RoboAI *ai)
     return 101;
 }
 
-/*
- * Get location such that the robot is lined up
- * Such that the ball is right between the goal and the robot
- * And we are APPROACH_BALL_DISTANCE_THRESHOLD away from the ball
- */
-void getShotDestination(struct RoboAI *ai, double *targetX, double *targetY)
-{
-    double goalX;
-    double goalY;
-    double directionX;
-    double directionY;
-    double distance;
-
-    // Fake var for now, this doesnt work
-    int IMAGE_WIDTH = 100; // TODO: Figure out how large the map is so we can find the goal location (idk what variable thats stored in, search for it and use it)
-
-    if (ai->st.side == 0)
-    {
-        goalX = IMAGE_WIDTH;
-    }
-    else
-    {
-        goalX = 0;
-    }
-
-    goalY = ai->st.ball->cy;
-
-    directionX = goalX - ai->st.ball->cx;
-    directionY = goalY - ai->st.ball->cy;
-
-    distance = getDistance(directionX, directionY);
-
-    if (distance == 0)
-    {
-        *targetX = ai->st.ball->cx;
-        *targetY = ai->st.ball->cy;
-        return;
-    }
-
-    directionX /= distance;
-    directionY /= distance;
-
-    *targetX = ai->st.ball->cx - APPROACH_BALL_DISTANCE_THRESHOLD * directionX;
-    *targetY = ai->st.ball->cy - APPROACH_BALL_DISTANCE_THRESHOLD * directionY;
-}
-
 int shootBall()
 {
     shoot();
@@ -945,6 +899,11 @@ int turnTowardsBall(struct RoboAI *ai)
     return 203;
 }
 
+/*
+ * Drive towards the current location of the ball
+ * Transition to 202 if an obstacle is in the way
+ * Transition to 201 if the path is clear
+ */
 int driveTowardsBall(struct RoboAI *ai)
 {
     double ballX, ballY;
@@ -1095,4 +1054,50 @@ void turnTowardsPosition(struct RoboAI *ai, double destX, double destY)
 
     // Make the full turn in this step
     turn_by_gyro((int)turnAngle);
+}
+
+/*
+ * Get location such that the robot is lined up
+ * Such that the ball is right between the goal and the robot
+ * And we are APPROACH_BALL_DISTANCE_THRESHOLD away from the ball
+ */
+void getShotDestination(struct RoboAI *ai, double *targetX, double *targetY)
+{
+    double goalX;
+    double goalY;
+    double directionX;
+    double directionY;
+    double distance;
+
+    // Fake var for now, this doesnt work
+    int IMAGE_WIDTH = 100; // TODO: Figure out how large the map is so we can find the goal location (idk what variable thats stored in, search for it and use it)
+
+    if (ai->st.side == 0)
+    {
+        goalX = IMAGE_WIDTH;
+    }
+    else
+    {
+        goalX = 0;
+    }
+
+    goalY = ai->st.ball->cy;
+
+    directionX = goalX - ai->st.ball->cx;
+    directionY = goalY - ai->st.ball->cy;
+
+    distance = getDistance(directionX, directionY);
+
+    if (distance == 0)
+    {
+        *targetX = ai->st.ball->cx;
+        *targetY = ai->st.ball->cy;
+        return;
+    }
+
+    directionX /= distance;
+    directionY /= distance;
+
+    *targetX = ai->st.ball->cx - APPROACH_BALL_DISTANCE_THRESHOLD * directionX;
+    *targetY = ai->st.ball->cy - APPROACH_BALL_DISTANCE_THRESHOLD * directionY;
 }
