@@ -808,25 +808,38 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
             // 1xx - Penalty Kick
 
         case 101:
+            fprintf(stderr, "Current State: %d - Positioning robot for penalty kick\n", ai->st.state);
             ai->st.state = 100 + positionRobotForShot(ai);
+            fprintf(stderr, "State Updated: %d\n\n", ai->st.state);
+
             break;
         case 160:
-            // Add a few more positioning steps in here to get it all lined up perfectly
+            fprintf(stderr, "Current State: %d - Shooting the ball\n", ai->st.state);
+
+            // TODO: Add a few more positioning steps in here to get it all lined up perfectly for the shot
             ai->st.state = 100 + shootBall();
+            fprintf(stderr, "State Updated: %d\n\n", ai->st.state);
             break;
         case 199:
+            fprintf(stderr, "Current State: %d - Penalty kick completed\n", ai->st.state);
             break;
 
             // 2xx - Chase Ball
 
         case 201:
+            fprintf(stderr, "Current State: %d - Turning towards the ball\n", ai->st.state);
             ai->st.state = 200 + turnTowardsBall(ai);
+            fprintf(stderr, "State Updated: %d\n\n", ai->st.state);
             break;
         case 203:
+            fprintf(stderr, "Current State: %d - Driving towards the ball\n", ai->st.state);
             ai->st.state = 200 + driveTowardsBall(ai);
+            fprintf(stderr, "State Updated: %d\n\n", ai->st.state);
             break;
         case 205:
+            fprintf(stderr, "Current State: %d - Diverting around an obstacle\n", ai->st.state);
             ai->st.state = 200 + divertAroundObstacle(ai);
+            fprintf(stderr, "State Updated: %d\n\n", ai->st.state);
             break;
         }
     }
@@ -856,7 +869,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
 
 /*
  * Move the robot such that we are in position for a shot on the goal
- * Transition to 102 on success
+ * Transition to SHOOT_BALL_STATE on success
  */
 int positionRobotForShot(struct RoboAI *ai)
 {
@@ -866,6 +879,7 @@ int positionRobotForShot(struct RoboAI *ai)
     double robotY;
 
     getShotDestination(ai, &targetX, &targetY);
+    fprintf(stderr, "Current State: %d - Target Destination (%d, %d)\n", ai->st.state, targetX, targetY);
 
     robotX = targetX - ai->st.self->cx;
     robotY = targetY - ai->st.self->cy;
@@ -893,13 +907,14 @@ int shootBall()
 
 /*
  * Turn the robot to face towards the ball
- * Transition to 203 on success
+ * Transition to DRIVE_TO_BALL_STATE on success
  */
 int turnTowardsBall(struct RoboAI *ai)
 {
     double ballX, ballY;
 
     getRelativePosition(ai->st.self, ai->st.ball, &ballX, &ballY);
+    fprintf(stderr, "Current State: %d - Target Destination (%d, %d)\n", ai->st.state, ballX, ballY);
 
     double destX = ai->st.self->cx + ballX;
     double destY = ai->st.self->cy + ballY;
@@ -911,8 +926,8 @@ int turnTowardsBall(struct RoboAI *ai)
 
 /*
  * Drive towards the current location of the ball
- * Transition to 202 if an obstacle is in the way
- * Transition to 201 if the path is clear
+ * Transition to AVOID_OBSTACLE_STATE if an obstacle is in the way
+ * Transition to STARTING_STATE if the path is clear
  */
 int driveTowardsBall(struct RoboAI *ai)
 {
@@ -920,6 +935,8 @@ int driveTowardsBall(struct RoboAI *ai)
     double distance;
 
     getRelativePosition(ai->st.self, ai->st.ball, &ballX, &ballY);
+    fprintf(stderr, "Current State: %d - Target Destination (%d, %d)\n", ai->st.state, ballX, ballY);
+
     distance = getDistance(ballX, ballY);
 
     // Stop when close enough to the ball
@@ -942,6 +959,10 @@ int driveTowardsBall(struct RoboAI *ai)
     return STARTING_STATE;
 }
 
+/*
+ * Move left/right around the obstacle blocking the player
+ * Transition to STARTING_STATE after moving to restart navigation to target
+ */
 int divertAroundObstacle(struct RoboAI *ai)
 {
     double ballX, ballY;
@@ -1057,7 +1078,7 @@ void turnTowardsPosition(struct RoboAI *ai, double destX, double destY)
     headingX = ai->st.sdx;
     headingY = ai->st.sdy;
 
-    // TODO: icl idk how this works **********
+    // TODO: icl idk how this works, this in particular may need to be tweaked to make it work
     if (ai->st.smx == 0 && ai->st.smy == 0)
     {
         return;
