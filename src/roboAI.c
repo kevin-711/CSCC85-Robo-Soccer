@@ -808,25 +808,25 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
             // 1xx - Penalty Kick
 
         case 101:
-            ai->st.state = positionRobotForShot(ai);
+            ai->st.state = 100 + positionRobotForShot(ai);
             break;
-        case 102:
+        case 160:
             // Add a few more positioning steps in here to get it all lined up perfectly
-            ai->st.state = shootBall();
+            ai->st.state = 100 + shootBall();
             break;
-        case 103:
+        case 199:
             break;
 
             // 2xx - Chase Ball
 
         case 201:
-            ai->st.state = turnTowardsBall(ai);
-            break;
-        case 202:
-            ai->st.state = divertAroundObstacle(ai);
+            ai->st.state = 200 + turnTowardsBall(ai);
             break;
         case 203:
-            ai->st.state = driveTowardsBall(ai);
+            ai->st.state = 200 + driveTowardsBall(ai);
+            break;
+        case 205:
+            ai->st.state = 200 + divertAroundObstacle(ai);
             break;
         }
     }
@@ -846,6 +846,14 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     **********************************************************************************/
 }
 
+// Single state value should be returned by the below functions
+// This will let us reuse functions which need to return a state value across 0xx 1xx and 2xx series
+#define STARTING_STATE 1
+#define DRIVE_TO_BALL_STATE 3
+#define AVOID_OBSTACLE_STATE 5
+#define SHOOT_BALL_STATE 60
+#define STOP_ROBOT_STATE 99
+
 /*
  * Move the robot such that we are in position for a shot on the goal
  * Transition to 102 on success
@@ -864,13 +872,15 @@ int positionRobotForShot(struct RoboAI *ai)
 
     if (getDistance(robotX, robotY) < 10)
     {
-        return 102;
+        // We are close enough, switch to shoot ball state
+        return SHOOT_BALL_STATE;
     }
 
     turnTowardsPosition(ai, targetX, targetY);
     drive_straight_pid(500, 1);
 
-    return 101;
+    // Keep on positioning robot, stay on current state
+    return STARTING_STATE;
 }
 
 int shootBall()
@@ -878,7 +888,7 @@ int shootBall()
     shoot();
 
     // Go to finished state
-    return 103;
+    return STOP_ROBOT_STATE;
 }
 
 /*
@@ -896,7 +906,7 @@ int turnTowardsBall(struct RoboAI *ai)
 
     turnTowardsPosition(ai, destX, destY);
 
-    return 203;
+    return DRIVE_TO_BALL_STATE;
 }
 
 /*
@@ -915,33 +925,49 @@ int driveTowardsBall(struct RoboAI *ai)
     // Stop when close enough to the ball
     if (distance < APPROACH_BALL_DISTANCE_THRESHOLD)
     {
-        return;
+        return STARTING_STATE;
     }
 
     // Check whether the path to the ball is blocked
-    // If so, transition to 202
     if (isPathToDestObstructed(ai))
     {
         // Go to obstacle avoidance state
-        return 202;
+        return AVOID_OBSTACLE_STATE;
     }
 
     // Drive straight for 500 ms
     drive_straight_pid(500, 1);
 
     // Recalculate the ball's direction and turn after driving (in case ball/robot position changes)
-    return 201;
+    return STARTING_STATE;
 }
 
-// TODO
 int divertAroundObstacle(struct RoboAI *ai)
 {
-    // TODO: Determine whether the opponent obstructs the path to the ball.
-    // TODO: Turn left/right and drive forwards a bit
-    // TODO: Return to state 201 once the path toward the ball is clear.
+    double ballX, ballY;
+    double oppX, oppY;
+    double cross;
+
+    getRelativePosition(ai->st.self, ai->st.ball, &ballX, &ballY);
+    getRelativePosition(ai->st.self, ai->st.opp, &oppX, &oppY);
+
+    // Figure out which side of the path the obstacle is on
+    // We turn the opposite way to evade more efficiently
+    cross = ballX * oppY - ballY * oppX;
+
+    if (cross >= 0)
+    {
+        turn_by_gyro(-45);
+    }
+    else
+    {
+        turn_by_gyro(45);
+    }
+
+    drive_straight_pid(500, 1);
 
     // Recalculate the ball's direction and turn after driving (in case ball/robot position changes)
-    return 201;
+    return STARTING_STATE;
 }
 
 /*
@@ -1031,7 +1057,7 @@ void turnTowardsPosition(struct RoboAI *ai, double destX, double destY)
     headingX = ai->st.sdx;
     headingY = ai->st.sdy;
 
-    // icl idk how this works **********
+    // TODO: icl idk how this works **********
     if (ai->st.smx == 0 && ai->st.smy == 0)
     {
         return;
@@ -1046,8 +1072,8 @@ void turnTowardsPosition(struct RoboAI *ai, double destX, double destY)
     }
 
     // Get angle of rotation to face the destination
-    headingAngle = atan2(headingY, headingX);
-    targetAngle = atan2(targetY, targetX);
+    headingAngle = atan2(-headingY, headingX);
+    targetAngle = atan2(-targetY, targetX);
 
     turnAngle = normalizeAngle(targetAngle - headingAngle);
     turnAngle = turnAngle * 180 / M_PI;
@@ -1069,25 +1095,24 @@ void getShotDestination(struct RoboAI *ai, double *targetX, double *targetY)
     double directionY;
     double distance;
 
-    // Fake var for now, this doesnt work
-    int IMAGE_WIDTH = 100; // TODO: Figure out how large the map is so we can find the goal location (idk what variable thats stored in, search for it and use it)
-
+    // Determine goal position
+    // Assume goal is in the middle of the opponent side wall
     if (ai->st.side == 0)
     {
-        goalX = IMAGE_WIDTH;
+        goalX = sx - 1.0;
     }
     else
     {
-        goalX = 0;
+        goalX = 1.0;
     }
 
-    goalY = ai->st.ball->cy;
+    goalY = sy / 2.0;
 
+    // Get distance vector to goal
     directionX = goalX - ai->st.ball->cx;
     directionY = goalY - ai->st.ball->cy;
 
     distance = getDistance(directionX, directionY);
-
     if (distance == 0)
     {
         *targetX = ai->st.ball->cx;
@@ -1098,6 +1123,7 @@ void getShotDestination(struct RoboAI *ai, double *targetX, double *targetY)
     directionX /= distance;
     directionY /= distance;
 
+    // We want to be behind the ball, opposite from the goal
     *targetX = ai->st.ball->cx - APPROACH_BALL_DISTANCE_THRESHOLD * directionX;
     *targetY = ai->st.ball->cy - APPROACH_BALL_DISTANCE_THRESHOLD * directionY;
 }

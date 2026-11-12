@@ -54,7 +54,8 @@ void stopRobot()
 
 void shoot()
 {
-    // TODO: hook up whatever motors to shoot the ball forwards
+    drive_straight_pid(1000, 1);
+    // TODO: hook up whatever motors to shoot the ball forwards instead of driving forwards
 }
 
 //****************** PID *******************//
