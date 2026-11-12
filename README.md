@@ -21,3 +21,4 @@ See the handout and the executable's usage doc. for the meaning of each
 command line parmeter.
 
 
+./src/roboSoccer /dev/video1 1 2
