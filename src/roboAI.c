@@ -795,6 +795,7 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
         *****************************************************************************/
 
         // Update info on ball, self, and opp from webcam
+
         track_agents(ai, blobs);
 
         switch (ai->st.state)
@@ -808,11 +809,20 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
             // 1xx - Penalty Kick
 
         case 101:
-            fprintf(stderr, "Current State: %d - Positioning robot for penalty kick\n", ai->st.state);
-            ai->st.state = 100 + positionRobotForShot(ai);
+            fprintf(stderr, "Current State: %d - Turning robot towards location for penalty kick\n", ai->st.state);
+            ai->st.state = 100 + turnTowardsShotLocation(ai);
+            fprintf(stderr, "State Updated: %d\n\n", ai->st.state);
+            break;
+        case 104:
+            fprintf(stderr, "Current State: %d - Driving towards the shot angle\n", ai->st.state);
+            ai->st.state = 100 + driveTowardsShotAngle(ai);
+            fprintf(stderr, "State Updated: %d\n\n", ai->st.state);
+            break;
+        case 110:
+            fprintf(stderr, "Current State: %d - Turning towards the ball\n", ai->st.state);
+            ai->st.state = 100 + turnTowardsBall2(ai);
             fprintf(stderr, "State Updated: %d\n\n", ai->st.state);
 
-            break;
         case 160:
             fprintf(stderr, "Current State: %d - Shooting the ball\n", ai->st.state);
 
@@ -823,6 +833,23 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
         case 199:
             fprintf(stderr, "Current State: %d - Penalty kick completed\n", ai->st.state);
             break;
+
+            // case 101:
+            //     fprintf(stderr, "Current State: %d - Positioning robot for penalty kick\n", ai->st.state);
+            //     ai->st.state = 100 + positionRobotForShot(ai);
+            //     fprintf(stderr, "State Updated: %d\n\n", ai->st.state);
+
+            //     break;
+            // case 160:
+            //     fprintf(stderr, "Current State: %d - Shooting the ball\n", ai->st.state);
+
+            //     // TODO: Add a few more positioning steps in here to get it all lined up perfectly for the shot
+            //     ai->st.state = 100 + shootBall();
+            //     fprintf(stderr, "State Updated: %d\n\n", ai->st.state);
+            //     break;
+            // case 199:
+            //     fprintf(stderr, "Current State: %d - Penalty kick completed\n", ai->st.state);
+            //     break;
 
             // 2xx - Chase Ball
 
@@ -859,13 +886,83 @@ void AI_main(struct RoboAI *ai, struct blob *blobs, void *state)
     **********************************************************************************/
 }
 
+void printPositions(struct RoboAI *ai)
+{
+    fprintf(stderr, "Styasr\n");
+
+    // Print player position
+    if (ai->st.selfID && ai->st.self != NULL)
+    {
+        printf("Player Position: X = %.2f, Y = %.2f\n",
+               ai->st.self->cx, ai->st.self->cy);
+    }
+    else
+    {
+        printf("Player not detected.\n");
+    }
+
+    // Print ball position
+    if (ai->st.ballID && ai->st.ball != NULL)
+    {
+        printf("Ball Position: X = %.2f, Y = %.2f\n",
+               ai->st.ball->cx, ai->st.ball->cy);
+    }
+    else
+    {
+        printf("Ball not detected.\n");
+    }
+    fprintf(stderr, "end\n");
+}
+
 // Single state value should be returned by the below functions
 // This will let us reuse functions which need to return a state value across 0xx 1xx and 2xx series
 #define STARTING_STATE 1
 #define DRIVE_TO_BALL_STATE 3
+#define DRIVE_TO_SHOT_LOCATION_STATE 4
 #define AVOID_OBSTACLE_STATE 5
+#define TURN_TOWARDS_BALL 10
 #define SHOOT_BALL_STATE 60
 #define STOP_ROBOT_STATE 99
+
+int turnTowardsShotLocation(struct RoboAI *ai)
+{
+    if (isTargetWithinDirection(ai, ai->st.ball->cx, ai->st.ball->cy))
+    {
+        return DRIVE_TO_SHOT_LOCATION_STATE;
+    }
+
+    turnTowardsPosition(
+        ai,
+        ai->st.ball->cx,
+        ai->st.ball->cy);
+
+    return STARTING_STATE;
+}
+
+int driveTowardsShotAngle(struct RoboAI *ai)
+{
+    double targetX;
+    double targetY;
+    double robotX;
+    double robotY;
+
+    getShotDestination(ai, &targetX, &targetY);
+    fprintf(stderr, "Current State: %d - Target Destination (%.2f, %.2f)\n", ai->st.state, targetX, targetY);
+
+    robotX = targetX - ai->st.self->cx;
+    robotY = targetY - ai->st.self->cy;
+
+    if (getDistance(robotX, robotY) < 300)
+    {
+        // We are close enough, switch to shoot ball state
+        return TURN_TOWARDS_BALL;
+    }
+
+    drive_straight_pid(1000, 1);
+
+    // Keep on positioning robot, stay on current state
+    return STARTING_STATE;
+}
 
 /*
  * Move the robot such that we are in position for a shot on the goal
@@ -879,22 +976,42 @@ int positionRobotForShot(struct RoboAI *ai)
     double robotY;
 
     getShotDestination(ai, &targetX, &targetY);
-    fprintf(stderr, "Current State: %d - Target Destination (%d, %d)\n", ai->st.state, targetX, targetY);
+    fprintf(stderr, "Current State: %d - Target Destination (%.2f, %.2f)\n", ai->st.state, targetX, targetY);
 
     robotX = targetX - ai->st.self->cx;
     robotY = targetY - ai->st.self->cy;
 
-    if (getDistance(robotX, robotY) < 10)
+    if (getDistance(robotX, robotY) < APPROACH_BALL_DISTANCE_THRESHOLD)
     {
         // We are close enough, switch to shoot ball state
         return SHOOT_BALL_STATE;
     }
 
     turnTowardsPosition(ai, targetX, targetY);
-    drive_straight_pid(500, 1);
+    drive_straight_pid(1000, 1);
 
     // Keep on positioning robot, stay on current state
     return STARTING_STATE;
+}
+
+/*
+ * turntowardsball but evil
+ */
+int turnTowardsBall2(struct RoboAI *ai)
+{
+    // printPositions(ai);
+
+    if (isTargetWithinDirection(ai, ai->st.ball->cx, ai->st.ball->cy))
+    {
+        return SHOOT_BALL_STATE;
+    }
+
+    turnTowardsPosition(
+        ai,
+        ai->st.ball->cx,
+        ai->st.ball->cy);
+
+    return TURN_TOWARDS_BALL;
 }
 
 int shootBall()
@@ -911,17 +1028,19 @@ int shootBall()
  */
 int turnTowardsBall(struct RoboAI *ai)
 {
-    double ballX, ballY;
+    // printPositions(ai);
 
-    getRelativePosition(ai->st.self, ai->st.ball, &ballX, &ballY);
-    fprintf(stderr, "Current State: %d - Target Destination (%d, %d)\n", ai->st.state, ballX, ballY);
+    if (isTargetWithinDirection(ai, ai->st.ball->cx, ai->st.ball->cy))
+    {
+        return DRIVE_TO_BALL_STATE;
+    }
 
-    double destX = ai->st.self->cx + ballX;
-    double destY = ai->st.self->cy + ballY;
+    turnTowardsPosition(
+        ai,
+        ai->st.ball->cx,
+        ai->st.ball->cy);
 
-    turnTowardsPosition(ai, destX, destY);
-
-    return DRIVE_TO_BALL_STATE;
+    return STARTING_STATE;
 }
 
 /*
@@ -935,9 +1054,10 @@ int driveTowardsBall(struct RoboAI *ai)
     double distance;
 
     getRelativePosition(ai->st.self, ai->st.ball, &ballX, &ballY);
-    fprintf(stderr, "Current State: %d - Target Destination (%d, %d)\n", ai->st.state, ballX, ballY);
-
+    // printPositions(ai);
+    // fprintf(stderr, "Current State: %d - Target Destination (%.2f, %.2f)\n", ai->st.state, ballX, ballY);
     distance = getDistance(ballX, ballY);
+    fprintf(stderr, "Current State: %d - Distance: %.2f\n", ai->st.state, distance);
 
     // Stop when close enough to the ball
     if (distance < APPROACH_BALL_DISTANCE_THRESHOLD)
@@ -952,8 +1072,8 @@ int driveTowardsBall(struct RoboAI *ai)
         return AVOID_OBSTACLE_STATE;
     }
 
-    // Drive straight for 500 ms
-    drive_straight_pid(500, 1);
+    // Drive straight for 1000 ms
+    drive_straight_pid(1000, 1);
 
     // Recalculate the ball's direction and turn after driving (in case ball/robot position changes)
     return STARTING_STATE;
@@ -1066,41 +1186,58 @@ double normalizeAngle(double angle)
 
 void turnTowardsPosition(struct RoboAI *ai, double destX, double destY)
 {
-    double targetX, targetY;
-    double headingX, headingY;
-    double headingAngle, targetAngle, turnAngle;
-    double dot;
+    static double previousHeading = 0.0;
+    static int headingInitialized = 0;
 
-    // Get relative dist to robot
+    double targetX, targetY;
+    double rawHeading, alternativeHeading;
+    double headingAngle, targetAngle, turnAngle;
+    double diff1, diff2;
+
+    // Get relative position of target
     targetX = destX - ai->st.self->cx;
     targetY = destY - ai->st.self->cy;
 
-    headingX = ai->st.sdx;
-    headingY = ai->st.sdy;
+    // Get heading from blob orientation
+    rawHeading = atan2(-ai->st.sdy, ai->st.sdx);
 
-    // TODO: icl idk how this works, this in particular may need to be tweaked to make it work
-    if (ai->st.smx == 0 && ai->st.smy == 0)
+    // Initialize heading on first call
+    if (!headingInitialized)
     {
-        return;
+        previousHeading = rawHeading;
+        headingInitialized = 1;
     }
 
-    dot = headingX * ai->st.smx + headingY * ai->st.smy;
+    // Calculate alternative heading (180 degree flip)
+    alternativeHeading = normalizeAngle(rawHeading + M_PI);
 
-    if (dot < 0)
-    {
-        headingX = -headingX;
-        headingY = -headingY;
-    }
+    // Compare both possibilities with previous heading
+    diff1 = normalizeAngle(rawHeading - previousHeading);
+    diff2 = normalizeAngle(alternativeHeading - previousHeading);
 
-    // Get angle of rotation to face the destination
-    headingAngle = atan2(-headingY, headingX);
+    // Choose the closest heading
+    if (fabs(diff1) < fabs(diff2))
+        headingAngle = rawHeading;
+    else
+        headingAngle = alternativeHeading;
+
+    // Save heading for next call
+    previousHeading = headingAngle;
+
+    // Calculate target direction
     targetAngle = atan2(-targetY, targetX);
 
+    // Calculate required rotation
     turnAngle = normalizeAngle(targetAngle - headingAngle);
-    turnAngle = turnAngle * 180 / M_PI;
 
-    // Make the full turn in this step
-    turn_by_gyro((int)turnAngle);
+    double turnDegrees = turnAngle * 180.0 / M_PI;
+
+    // fprintf(stderr, "Raw Heading: %.2f\n", rawHeading * 180.0 / M_PI);
+    // fprintf(stderr, "Selected Heading: %.2f\n", headingAngle * 180.0 / M_PI);
+    // fprintf(stderr, "Target Heading: %.2f\n", targetAngle * 180.0 / M_PI);
+    // fprintf(stderr, "Turn: %.2f\n", turnDegrees);
+
+    turn_by_gyro((int)turnDegrees);
 }
 
 /*
@@ -1145,6 +1282,54 @@ void getShotDestination(struct RoboAI *ai, double *targetX, double *targetY)
     directionY /= distance;
 
     // We want to be behind the ball, opposite from the goal
-    *targetX = ai->st.ball->cx - APPROACH_BALL_DISTANCE_THRESHOLD * directionX;
-    *targetY = ai->st.ball->cy - APPROACH_BALL_DISTANCE_THRESHOLD * directionY;
+    *targetX = ai->st.ball->cx - APPROACH_BALL_DISTANCE_THRESHOLD * 1.5 * directionX;
+    *targetY = ai->st.ball->cy - APPROACH_BALL_DISTANCE_THRESHOLD * 1.5 * directionY;
+}
+
+// int isTargetWithinDirection(struct RoboAI *ai, double destX, double destY)
+// {
+//     double targetX, targetY;
+//     double headingAngle, targetAngle, angleDifference;
+
+//     if (ai == NULL || ai->st.self == NULL)
+//         return 0;
+
+//     // Calculate relative target position
+//     targetX = destX - ai->st.self->cx;
+//     targetY = destY - ai->st.self->cy;
+
+//     // Get current robot heading from blob direction
+//     headingAngle = atan2(-ai->st.sdy, ai->st.sdx);
+
+//     // Calculate direction towards target
+//     targetAngle = atan2(-targetY, targetX);
+
+//     // Calculate smallest angular difference
+//     angleDifference = normalizeAngle(targetAngle - headingAngle);
+
+//     // Convert to degrees
+//     angleDifference = fabs(angleDifference * 180.0 / M_PI);
+
+//     fprintf(stderr, "Angle difference: %.2f degrees\n", angleDifference);
+
+//     // Check if target is within tolerance
+//     return angleDifference <= TARGET_ANGLE_TOLERANCE;
+// }
+
+int isTargetWithinDirection(struct RoboAI *ai, double destX, double destY)
+{
+    double targetX = destX - ai->st.self->cx;
+    double targetY = destY - ai->st.self->cy;
+
+    double headingAngle = atan2(-ai->st.sdy, ai->st.sdx);
+    double targetAngle = atan2(-targetY, targetX);
+
+    double turnAngle = normalizeAngle(targetAngle - headingAngle);
+
+    double turnDegrees = fabs(turnAngle * 180.0 / M_PI);
+
+    // fprintf(stderr, "Angle difference from 180: %.2f degrees\n",
+    //         fabs(180.0 - turnDegrees));
+
+    return fabs(180.0 - turnDegrees) <= TARGET_ANGLE_TOLERANCE;
 }

@@ -22,3 +22,6 @@ command line parmeter.
 
 
 ./src/roboSoccer /dev/video1 1 2
+
+Press g and t to run
+

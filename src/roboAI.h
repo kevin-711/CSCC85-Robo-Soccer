@@ -159,8 +159,9 @@ struct displayList *clearDP(struct displayList *head);
 // Distance Thresholds
 
 #define PATH_OBSTRUCTED_THRESHOLD 40
-#define APPROACH_BALL_DISTANCE_THRESHOLD 40
-#define APPROACH_BALL_DISTANCE_THRESHOLD 40
+#define APPROACH_BALL_DISTANCE_THRESHOLD 300
+
+#define TARGET_ANGLE_TOLERANCE 15
 
 // Main FSM functions
 
@@ -169,6 +170,10 @@ int divertAroundObstacle(struct RoboAI *ai);
 int driveTowardsBall(struct RoboAI *ai);
 int turnTowardsBall(struct RoboAI *ai);
 int shootBall();
+
+int turnTowardsShotLocation(struct RoboAI *ai);
+int driveTowardsShotAngle(struct RoboAI *ai);
+int turnTowardsBall2(struct RoboAI *ai);
 
 // Helper functions for FSM
 
@@ -179,5 +184,7 @@ void getRelativePosition(struct blob *self, struct blob *target, double *dx, dou
 void getShotDestination(struct RoboAI *ai, double *targetX, double *targetY);
 void turnTowardsPosition(struct RoboAI *ai, double destX, double destY);
 int isPathToDestObstructed(struct RoboAI *ai);
+
+int isTargetWithinDirection(struct RoboAI *ai, double destX, double destY);
 
 #endif

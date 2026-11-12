@@ -12,27 +12,51 @@
 //****************** Turning *******************//
 
 // Turning to target degree helper
+// int turn_by_gyro(int target_deg)
+// {
+//     int angle = 0, rate = 0;
+//     int dir = (target_deg > 0) ? 1 : -1;
+//     BT_all_stop(0);
+//     usleep(500000);
+//     if (BT_read_gyro(GYRO_PORT, 1, &angle, &rate) != 1)
+//         return (-1);
+//     for (int i = 0; i < 200; i++)
+//     {
+//         if (BT_read_gyro(GYRO_PORT, 0, &angle, &rate) != 1)
+//         {
+//             BT_all_stop(1);
+//             return (-1);
+//         }
+//         if (dir * GYRO_SIGN * angle >= abs(target_deg) - OVERSHOOT)
+//             break;
+//         BT_turn(LEFT_MOTOR, dir * 25, RIGHT_MOTOR, -dir * 25);
+//     }
+//     BT_all_stop(1);
+//     return (0);
+// }
+
+// Turn robot slightly left or right
 int turn_by_gyro(int target_deg)
 {
-    int angle = 0, rate = 0;
-    int dir = (target_deg > 0) ? 1 : -1;
-    BT_all_stop(0);
-    usleep(500000);
-    if (BT_read_gyro(GYRO_PORT, 1, &angle, &rate) != 1)
-        return (-1);
-    for (int i = 0; i < 200; i++)
+    if (target_deg == 0)
     {
-        if (BT_read_gyro(GYRO_PORT, 0, &angle, &rate) != 1)
-        {
-            BT_all_stop(1);
-            return (-1);
-        }
-        if (dir * GYRO_SIGN * angle >= abs(target_deg) - OVERSHOOT)
-            break;
-        BT_turn(LEFT_MOTOR, dir * 25, RIGHT_MOTOR, -dir * 25);
+        BT_all_stop(1);
+        return 0;
     }
+
+    int dir = (target_deg > 0) ? 1 : -1;
+
+    // Start turning
+    BT_turn(LEFT_MOTOR, dir * 10,
+            RIGHT_MOTOR, -dir * 10);
+
+    // Allow a small rotation
+    usleep(100000); // 100 ms
+
+    // Stop motors
     BT_all_stop(1);
-    return (0);
+
+    return 0;
 }
 
 void turnLeft()
@@ -54,7 +78,12 @@ void stopRobot()
 
 void shoot()
 {
-    drive_straight_pid(1000, 1);
+
+    BT_turn(LEFT_MOTOR, 90, RIGHT_MOTOR, 90);
+    usleep(2000000);
+    BT_all_stop(0);
+
+    drive_straight_pid(10000, 1);
     // TODO: hook up whatever motors to shoot the ball forwards instead of driving forwards
 }
 
