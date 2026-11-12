@@ -952,7 +952,7 @@ int driveTowardsShotAngle(struct RoboAI *ai)
     robotX = targetX - ai->st.self->cx;
     robotY = targetY - ai->st.self->cy;
 
-    if (getDistance(robotX, robotY) < 300)
+    if (getDistance(robotX, robotY) < 400)
     {
         // We are close enough, switch to shoot ball state
         return TURN_TOWARDS_BALL;
